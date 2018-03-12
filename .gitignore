@@ -1,0 +1,8 @@
+build/
+dist/
+nbproject/private/
+testoutput.txt
+testraw.txt
+danfig
+DanTest-dan-ed.jar
+

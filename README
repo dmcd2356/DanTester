@@ -1,0 +1,15 @@
+This is a unit test collection for danalyzer.
+
+DanTest - consists of a program for performing the specific tests.
+          The test is run with 2 parameters: <testtype> <testnumber>
+          Where: <testtype> = 1 for uninstrumented method tests
+                            = 2 for Object creation tests
+                 <testnumber> = the specified test number
+
+DanTestLib - a library for providing uninstrumented classes
+
+DanParse - a program for parsing the debug output of DanTest to determine
+           if the test passed or failed
+                 -t or -T options can be added to provide debug info
+
+runtest.sh - bash script for running the tests
