@@ -1,6 +1,8 @@
 build/
 dist/
 nbproject/private/
+lib/DanTestLib.jar
+.danalyzer/site.properties
 classlist.txt
 danfig
 DanTest-dan-ed.jar
