@@ -30,24 +30,6 @@ function add_to_classpath
     fi
 }
 
-function build_folder
-{
-    echo "- building $1"
-    if [[ "$1" == "danalyzer" ]]; then
-        cd "${DANPATH}"
-    else
-        cd "$1"
-    fi
-    ant jar &1> /dev/null
-    if [[ $? -ne 0 ]]; then
-        echo "ERROR: command failure"
-        cd "${CURDIR}"
-        exit_cleanup
-        exit 1
-    fi
-    cd "${CURDIR}"
-}
-
 function exit_cleanup
 {
     # restore the original directory
@@ -67,23 +49,27 @@ function helpmsg
     echo "       -t  = display state change info for debugging test"
     echo "       -T  = display state and parsing info for debugging test"
     echo "       -i  = run danalyzer on DanTest before running test"
-    echo "       -l  = force rebuild of DanTestLib and DanTest prior to running"
+    echo "       -l  = force rebuild of DanTest (and lib) prior to running"
+    echo "       -p  = force rebuild of DanParse prior to running"
+    echo ""
+    echo "use -i if danalyzer source has changed"
+    echo "use -l if DanTest or DanTestLib source has changed"
+    echo "use -p if DanParse source has changed"
     echo ""
 }
 
 #=======================================================================
 # start here:
-# run the instrumented test
 if [[ $# -eq 0 ]]; then
     helpmsg
     exit 0
 fi
 
 # read options
-COMMAND=()
 TESTMODE=""
 INSTRUMENT=0
 UPDATELIB=0
+UPDATEPARSE=0
 ARGCOUNT=0
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -94,6 +80,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -l)
             UPDATELIB=1
+            shift
+            ;;
+        -p)
+            UPDATEPARSE=1
             shift
             ;;
         -t)
@@ -107,19 +97,31 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            COMMAND+=("$1")
+            if [[ ${ARGCOUNT} -eq 0 ]]; then
+                TESTTYPE=$1
+            else
+                TESTNUM=$1
+            fi
             shift
             ARGCOUNT=`expr ${ARGCOUNT} + 1`
             ;;
     esac
 done
+
+# verify arguments
 if [[ ${ARGCOUNT} -ne 2 ]]; then
     echo "ERROR: invalid number of arguments given"
     echo ""
     helpmsg
     exit 1
 fi
-ARGLIST="${COMMAND[@]:0}"
+case ${TESTTYPE} in
+    1) TESTNAME="UNINSTRUMENTED" ;;
+    2) TESTNAME="NEWOBJECT" ;;
+    *) echo "ERROR: invalid test type selection: $1"
+       exit 1
+       ;;
+esac
 
 # save current path
 CURDIR=$(pwd 2>&1)
@@ -133,7 +135,7 @@ OUTFILE="testoutput.txt"
 if [ ! -d "${DANPATH}" ]; then
     echo "danalyzer path invalid: ${DANPATH}"
     exit 1
-    if [ ! -f "${DANPATH}/dist/danalyzer.jar" ]; then
+    if [[ ! -f "${DANPATH}/dist/danalyzer.jar" || ${INSTRUMENT} -eq 1 ]]; then
         echo "- building danalyzer"
         cd "${DANPATH}"
         ant jar 2>&1 /dev/null
@@ -143,12 +145,15 @@ if [ ! -d "${DANPATH}" ]; then
             exit 1
         fi
         cd "${CURDIR}"
+
+        # set flag to instrument DanTest, since danalyzer source may have changed
+        INSTRUMENT=1
     fi
 fi
 
 # if any of the jar files are missing, build them now
 FOLDER="DanParse"
-if [ ! -f "${FOLDER}/dist/${FOLDER}.jar" ]; then
+if [[ ! -f "${FOLDER}/dist/${FOLDER}.jar" || ${UPDATEPARSE} -eq 1 ]]; then
     echo "- building ${FOLDER}"
     cd "${FOLDER}"
     ant jar &> /dev/null
@@ -243,8 +248,8 @@ cd "DanTest"
     fi
 
     # run the DanTest program and capture output to file
-    echo "- running instrumented DanTest for test ${ARGLIST}"
-    java -Xverify:none -cp ${CLASSPATH} dantest.DanTest ${ARGLIST} > ../DanParse/${RAWFILE}
+    echo "- running instrumented DanTest for test: ${TESTNAME} ${TESTNUM}"
+    java -Xverify:none -cp ${CLASSPATH} dantest.DanTest ${TESTTYPE} ${TESTNUM} > ../DanParse/${RAWFILE}
     if [[ $? -ne 0 ]]; then
         echo "ERROR: command failure"
         exit_cleanup
