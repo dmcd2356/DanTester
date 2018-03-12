@@ -57,10 +57,8 @@ function exit_cleanup
     rm -f DanTest/${CFGFILE}
 }
 
-#=======================================================================
-# start here:
-# run the instrumented test
-if [[ $# -eq 0 ]]; then
+function helpmsg
+{
     echo "runtest.sh [options] <test_type> <test_number>"
     echo ""
     echo "where: <test_type>   = 1 for Uninstrumented tests, 2 for NewObject tests"
@@ -71,6 +69,13 @@ if [[ $# -eq 0 ]]; then
     echo "       -i  = run danalyzer on DanTest before running test"
     echo "       -l  = force rebuild of DanTestLib and DanTest prior to running"
     echo ""
+}
+
+#=======================================================================
+# start here:
+# run the instrumented test
+if [[ $# -eq 0 ]]; then
+    helpmsg
     exit 0
 fi
 
@@ -79,6 +84,7 @@ COMMAND=()
 TESTMODE=""
 INSTRUMENT=0
 UPDATELIB=0
+ARGCOUNT=0
 while [[ $# -gt 0 ]]; do
     key="$1"
     case ${key} in
@@ -103,9 +109,16 @@ while [[ $# -gt 0 ]]; do
         *)
             COMMAND+=("$1")
             shift
+            ARGCOUNT=`expr ${ARGCOUNT} + 1`
             ;;
     esac
 done
+if [[ ${ARGCOUNT} -ne 2 ]]; then
+    echo "ERROR: invalid number of arguments given"
+    echo ""
+    helpmsg
+    exit 1
+fi
 ARGLIST="${COMMAND[@]:0}"
 
 # save current path
