@@ -1,15 +1,47 @@
-This is a unit test collection for danalyzer.
+This is a collection of programs for ferforming unit tests for danalyzer.
 
-DanTest - consists of a program for performing the specific tests.
-          The test is run with 2 parameters: <testtype> <testnumber>
-          Where: <testtype> = 1 for uninstrumented method tests
-                            = 2 for Object creation tests
-                 <testnumber> = the specified test number
+-------------------------------------------------------------------------------------------------
+DanTest - a program for performing the specific tests of a danalyzed file.
+    Debug message output can be captured to verify whether the commands pass or fail the tests.
 
-DanTestLib - a library for providing uninstrumented classes
+    Usage:
+        java -jar DanTest.jar <test_type> <test_number>
 
-DanParse - a program for parsing the debug output of DanTest to determine
-           if the test passed or failed
-                 -t or -T options can be added to provide debug info
+    Where: <test_type>   = 1 for Uninstrumented tests, 2 for NewObject tests
+           <test_number> = the test number for the specified test
 
+-------------------------------------------------------------------------------------------------
+DanTestLib - a library for providing uninstrumented classes for DanTest
+    (included as a library in DanTest so some user-defined methods can be un-instrumented)
+
+-------------------------------------------------------------------------------------------------
+DanParse - a program for parsing the debug output of DanTest to determine if the test passed or failed
+
+    Usage:
+        java -jar DanParse.jar [options] <raw_file> <out_file>
+
+    Where: <raw_file> = name of the output file to save the danalyzed test debug messages into
+           <out_file> = name of the output file to create containing the PASS or FAIL status
+    options:
+           -t  = display state change info for debugging test
+           -T  = display state and parsing info for debugging test
+
+-------------------------------------------------------------------------------------------------
 runtest.sh - bash script for running the tests
+
+    Usage:
+        runtest.sh [options] <test_type> <test_number>
+
+    Where: <test_type>   = 1 for Uninstrumented tests, 2 for NewObject tests
+           <test_number> = the test number for the specified test
+    options:
+           -t  = display state change info for debugging test
+           -T  = display state and parsing info for debugging test
+           -i  = run danalyzer on DanTest before running test
+           -l  = force rebuild of DanTest (and lib) prior to running
+           -p  = force rebuild of DanParse prior to running
+
+    use -i if danalyzer source has changed
+    use -l if DanTest or DanTestLib source has changed
+    use -p if DanParse source has changed
+
