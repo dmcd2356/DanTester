@@ -22,41 +22,41 @@ import java.io.File;
  */
 public class TestNewObject implements TestObject {
   
-  private enum TestType { INSTR, UNINSTR, UNKNOWN };
+  private enum TestType { OBJ_SIMPLE_INS, OBJ_SIMPLE_UN, UNINSTR, UNKNOWN };
   
   @Override
   public int run(int testnum) {
     switch(testnum) {
       case 1:
-        // create simple intrumented object
-        expectedCondition(TestType.UNKNOWN, "?", "?");
+        // create simple instrumented object
+        expectedCondition(TestType.OBJ_SIMPLE_INS, "dantest.TestNewObject$NewObject1");
         NewObject1 obj1 = new NewObject1(1);
         break;
       case 2:
-        // create simple unintrumented object
-        expectedCondition(TestType.UNKNOWN, "?", "?");
+        // create simple uninstrumented object
+        expectedCondition(TestType.OBJ_SIMPLE_UN, "java.util.ArrayList");
         ArrayList<String> obj2 = new ArrayList<>();
         break;
       case 3:
-        // create unintrumented object that creates instrumented object
-        expectedCondition(TestType.UNKNOWN, "?", "?");
+        // create uninstrumented object that creates instrumented object
+        expectedCondition(TestType.UNKNOWN, "dantest.TestNewObject$NewObject3");
         ArrayList<NewObject3> obj3;
         obj3 = new ArrayList<>();
         obj3.add(new NewObject3(1));
         break;
       case 4:
         // create instrumented object that creates another instrumented object
-        expectedCondition(TestType.UNKNOWN, "?", "?");
+        expectedCondition(TestType.UNKNOWN, "dantest.TestNewObject$NewObject4");
         NewObject4 obj4 = new NewObject4();
         break;
       case 5:
         // create instrumented object that creates an uninstrumented object (NOT WORKING!)
-        expectedCondition(TestType.UNKNOWN, "?", "?");
+        expectedCondition(TestType.UNKNOWN, "dantest.TestNewObject$NewObject5");
         NewObject5 obj5 = new NewObject5();
         break;
       case 6:
         // call un-instrumented method that gets instrumented callback that returns an object (NOT WORKING!)
-        expectedCondition(TestType.UNKNOWN, "?", "?");
+        expectedCondition(TestType.UNKNOWN, "dantest.TestNewObject$NewObject6");
         NewObject6 obj6 = new NewObject6();
         break;
       default:
@@ -67,8 +67,8 @@ public class TestNewObject implements TestObject {
     return 0;
   }
 
-  private void expectedCondition(TestType type, String uninstrmeth, String meth) {
-    System.out.println("EXPECTED: " + type.toString() + " " + uninstrmeth + " " + meth);
+  private void expectedCondition(TestType type, String objectType) {
+    System.out.println("EXPECTED: " + type.toString() + " " + objectType);
   }
   
   private class NewObject1 {

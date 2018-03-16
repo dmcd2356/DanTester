@@ -7,7 +7,6 @@ package dantest;
 
 import dantestlib.Callback;
 import dantestlib.Callback.CallBack;
-import dantestlib.ExtArrayList;
 import java.util.ArrayList;
 
 /**
@@ -16,7 +15,7 @@ import java.util.ArrayList;
  */
 public class TestUninstrumented implements TestObject {
 
-  private enum TestType { REPLACE, INSERT, CALLBACK, NORMAL, UNKNOWN };
+  private enum TestType { METH_NORMAL, METH_CALLBACK, METH_REPLACE, METH_REPL_NEST, UNKNOWN };
   
   @Override
   public int run(int testnum) {
@@ -24,20 +23,20 @@ public class TestUninstrumented implements TestObject {
     switch(testnum) {
       case 1:
         // un-instrumented method replaced by overridden instrumented method
-        expectedCondition(TestType.NORMAL, "java/util/ArrayList.add(Ljava/lang/Object;)Z",
+        expectedCondition(TestType.METH_NORMAL, "java/util/ArrayList.add(Ljava/lang/Object;)Z",
                                             "");
         UninstrNormal mylist6 = new UninstrNormal();
         break;
       case 2:
         // un-instrumented method performs callback to instrumented method
-        expectedCondition(TestType.CALLBACK, "dantestlib/Callback.makeCall()V",
+        expectedCondition(TestType.METH_CALLBACK, "dantestlib/Callback.makeCall()V",
                                              "methodToCallBack()I");
         Callback cb = new Callback(new UninstrCallback());
         cb.makeCall();
         break;
       case 3:
         // un-instrumented method replaced by overridden instrumented method
-        expectedCondition(TestType.REPLACE, "java/util/ArrayList.add(Ljava/lang/Object;)Z",
+        expectedCondition(TestType.METH_REPLACE, "java/util/ArrayList.add(Ljava/lang/Object;)Z",
                                             "dantest/TestUninstrumented$UninstrReplace1");
         UninstrReplace1<String> mylist1 = new UninstrReplace1<>();
         list = mylist1;
@@ -46,22 +45,11 @@ public class TestUninstrumented implements TestObject {
         break;
       case 4:
         // un-instrumented method replaced by overridden instrumented method that calls un-instr method
-        expectedCondition(TestType.REPLACE, "java/util/ArrayList.add(Ljava/lang/Object;)Z",
+        expectedCondition(TestType.METH_REPL_NEST, "java/util/ArrayList.add(Ljava/lang/Object;)Z",
                                             "dantest/TestUninstrumented$UninstrReplace2");
         UninstrReplace2<String> mylist2 = new UninstrReplace2<>(3);
         list = mylist2;
         list.add("1stentry");
-        break;
-      case 5:
-        // un-instrumented method gets an inserted <clinit> method (NOT FUNCTIONAL)
-        expectedCondition(TestType.INSERT, "?", "?");
-        UninstrInsert1 mylist3 = new UninstrInsert1(10);
-        break;
-      case 6:
-        // instrumented method performs callback to instrumented method (NOT FUNCTIONAL)
-        expectedCondition(TestType.INSERT, "?", "?");
-        MyCallback instcb = new MyCallback(new UninstrInsert2());
-        instcb.makeCall();
         break;
       default:
         System.out.println("!!!INVALID");
@@ -75,6 +63,15 @@ public class TestUninstrumented implements TestObject {
     System.out.println("EXPECTED: " + type.toString() + " " + uninstrmeth + " " + meth);
   }
   
+  private static class UninstrNormal {
+    ArrayList<String> arrayList;
+
+    private UninstrNormal() {
+      arrayList = new ArrayList<>();
+      arrayList.add("hello world!");
+    }
+  }
+
   private class UninstrReplace1<E> extends ArrayList<E> {
 
     private final int MAX_SIZE = 10;
@@ -131,45 +128,11 @@ public class TestUninstrumented implements TestObject {
     }
   }
 
-  private static class UninstrInsert1 {
-
-    ExtArrayList<Object3> arrayList;
-
-    private UninstrInsert1(int size) {
-      arrayList = new ExtArrayList<>(new Object3(10));
-    }
-  
-    private static class Object3 {
-      private static int maxSize = 10;
-      public int value;
-      Object3(int val) {
-        value = val;
-      }
-    }
-  }
-
   private class UninstrCallback implements CallBack {
     @Override
     public int methodToCallBack() {
       System.out.println("4 got called back!");
       return 4;
-    }
-  }
-
-  private class UninstrInsert2 implements CallBackLocal {
-    @Override
-    public int methodToCallBack() {
-      System.out.println("5 got called back!");
-      return 5;
-    }
-  }
-  
-  private static class UninstrNormal {
-    ArrayList<String> arrayList;
-
-    private UninstrNormal() {
-      arrayList = new ArrayList<>();
-      arrayList.add("hello world!");
     }
   }
 
