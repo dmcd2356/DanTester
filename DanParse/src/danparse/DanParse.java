@@ -23,22 +23,31 @@ public class DanParse {
 
   private static enum testType { NONE, UNINSTRUMENTED, OBJECT };
   
-  private static enum stateType { NONE, ERROR, EXIT,
-                                  TRY, SKIP, CALLBACK, REPLACE, RUN,
-                                  OBJBEGIN, COOKSTACK, COOKLOCAL };
+                                              // inputs that generate the specified new state
+  private static enum stateType { NONE,       // starting point
+                                  ERROR,      // an error occurred
+                                  EXIT,       // TESTEXIT
+                                  TRY,        // TEST  : UNINSTR TRY
+                                  SKIP,       // TEST  : UNINSTR SKIP
+                                  CALLBACK,   // TEST  : UNINSTR CALLBACK
+                                  REPLACE,    // TEST  : UNINSTR REPLACE
+                                  RUN,        // UNINST: 
+                                  OBJBEGIN,   // TEST  : OBJECT[xx]: BEGIN
+                                  COOKSTACK,  // TEST  : OBJECT[xx]: COOKED STACK
+                                  COOKLOCAL   // TEST  : OBJECT[xx]: COOKED LOCAL
+                                };
   
   // set from expected settings
   private static String expType;          // the expected test type to run
   private static String expObject;        // the expected method or object to be tested
   private static String expOther;         // the expected other method (UNINSTR tests)
-  private static testType expTest;        // the type of test we are running
   
   private static String  linenum;         // the line number being processed
-  private static stateType runState;      // current running state
   private static int     showMessages;    // 1 to print state messages, 2 to print all messages
   private static boolean bFailure;        // true if test failure occurred
   private static int     stateIndex;      // current index in stateList to next valid state
   private static ArrayList<stateType> stateList; // list of state changes expected
+  private static ArrayList<stateType> ignoreList; // list of states to ignore
   
   private static void debugPrint(String message) {
     if (showMessages > 0) {
@@ -50,6 +59,35 @@ public class DanParse {
     if (showMessages > 1) {
       System.out.println(message);
     }
+  }
+  
+  private static void ignoreAllObjects() {
+    ignoreList.add(stateType.OBJBEGIN);
+    ignoreList.add(stateType.COOKSTACK);
+    ignoreList.add(stateType.COOKLOCAL);
+  }
+  
+  private static void ignoreAllUninstrs() {
+    ignoreList.add(stateType.TRY);
+    ignoreList.add(stateType.SKIP);
+    ignoreList.add(stateType.CALLBACK);
+    ignoreList.add(stateType.REPLACE);
+    ignoreList.add(stateType.RUN);
+  }
+  
+  private static boolean isStateIgnored(stateType state) {
+    // always ignore the following states (should never be thrown)
+    if (state == stateType.NONE || state == stateType.ERROR) {
+      return true;
+    }
+    
+    // and ignore any states that were specifically marked
+    for (stateType next : ignoreList) {
+      if (next == state) {
+        return true;
+      }
+    }
+    return false;
   }
   
   private static boolean isValidNumeric(String str) {
@@ -81,15 +119,19 @@ public class DanParse {
 
   private static void setTestPass(stateType newState) {
     debugPrint("PASS - " + expType + " :: STATE_" + newState.toString());
-    runState = newState;
   }
   
   private static void checkStateNext(stateType newState) {
     // ignore entries not pertanent to the test
-    if (bFailure || newState == stateType.NONE || newState == stateType.ERROR) {
+    if (bFailure || isStateIgnored(newState)) {
       return;
     }
-
+    
+    if (stateList.isEmpty()) {
+      setTestFail(newState, "No state machine entries set up");
+      return;
+    }
+    
     stateType nextState = stateList.get(stateIndex);
     if (newState == nextState) {
       setTestPass(newState);
@@ -152,7 +194,7 @@ public class DanParse {
 
   private static stateType parseTestObject(String line) {
     stateType state;
-    String objType = "";
+    String objType;
 
     String[] array = line.split(" "); // OBJECT[xx]: has been stripped off the line
     switch(array[0]) { // 1st word is the UNINSTR type specified
@@ -214,8 +256,8 @@ public class DanParse {
       case "TEST":
         // This handles the TEST type debug messages
         if (!message.contains(" ")) {
-          runState = stateType.ERROR;
           debugPrint("ERROR line " + linenum + ": Invalid TEST line: " + message);
+          bFailure = true;
           return false;
         }
         
@@ -231,31 +273,26 @@ public class DanParse {
         }
 
         // run the parser and state checker for each applicable line
-        if (expTest == testType.UNINSTRUMENTED && type.equals("UNINSTR")) {
-          extendedPrint(linenum + ": " + message);
-          state = parseTestUninstrumented(message);
-          checkStateNext(state);
-        } else if (expTest == testType.OBJECT && type.equals("OBJECT")) {
-          extendedPrint(linenum + ": " + message);
-          state = parseTestObject(message);
-          checkStateNext(state);
+        extendedPrint(linenum + ": " + message);
+        if (type.equals("UNINSTR")) {
+          checkStateNext(parseTestUninstrumented(message));
+        } else if (type.equals("OBJECT")) {
+          checkStateNext(parseTestObject(message));
         }
         break;
       case "UNINST":
-        // This handles the UNINST type debug messages (only used for the UNINSTRUMENTED tests)
-        if (expTest == testType.UNINSTRUMENTED) {
-          message = message.trim();
-          extendedPrint(linenum + ": " + message);
-          if (expObject.equals(message)) {
-            state = stateType.RUN;
-          } else {
-            state = stateType.NONE;
-          }
+        // This handles the UNINST type debug messages
+        message = message.trim();
+        extendedPrint(linenum + ": " + message);
+        if (expObject.equals(message)) {
+          state = stateType.RUN;
+        } else {
+          state = stateType.NONE;
+        }
 
-          // now check the new state to see if it is valid
-          if (state != stateType.ERROR) {
-            checkStateNext(state);
-          }
+        // now check the new state to see if it is valid
+        if (state != stateType.ERROR) {
+          checkStateNext(state);
         }
         break;
       default:
@@ -299,16 +336,16 @@ public class DanParse {
       switch (expType) {
         case "METH_NORMAL":
           expMessage = "no change (uninstrumented method called)";
-          // setup test type and valid states
-          expTest = testType.UNINSTRUMENTED;
+          // setup valid states for test
+          ignoreAllObjects();
           stateList.add(stateType.TRY);
           stateList.add(stateType.RUN);
           stateList.add(stateType.EXIT);
           break;
         case "METH_CALLBACK":
           expMessage = "CALLBACK to " + expOther;
-          // setup test type and valid states
-          expTest = testType.UNINSTRUMENTED;
+          // setup valid states for test
+          ignoreAllObjects();
           stateList.add(stateType.TRY);
           stateList.add(stateType.CALLBACK);
           stateList.add(stateType.RUN);
@@ -321,8 +358,8 @@ public class DanParse {
             methodonly = expObject.substring(offset);
           }
           expMessage = "REPLACED by " + expOther + methodonly;
-          // setup test type and valid states
-          expTest = testType.UNINSTRUMENTED;
+          // setup valid states for test
+          ignoreAllObjects();
           stateList.add(stateType.TRY);
           stateList.add(stateType.REPLACE);
           stateList.add(stateType.SKIP);
@@ -335,8 +372,8 @@ public class DanParse {
             methodonly = expObject.substring(offset);
           }
           expMessage = "REPLACED by " + expOther + methodonly;
-          // setup test type and valid states
-          expTest = testType.UNINSTRUMENTED;
+          // setup valid states for test
+          ignoreAllObjects();
           stateList.add(stateType.TRY);
           stateList.add(stateType.REPLACE);
           stateList.add(stateType.TRY);
@@ -344,27 +381,35 @@ public class DanParse {
           stateList.add(stateType.SKIP);
           stateList.add(stateType.EXIT);
           break;
-        case "OBJ_SIMPLE_INS":
-          expMessage = "SIMPLE INSTRUMENTED OBJECT";
-          // setup test type and valid states
-          expTest = testType.OBJECT;
-          stateList.add(stateType.OBJBEGIN);
-          stateList.add(stateType.COOKLOCAL);
-          stateList.add(stateType.EXIT);
-          break;
-        case "OBJ_SIMPLE_UN":
+        case "OBJ_UNINTRUMENTED":
           expMessage = "SIMPLE UNINSTRUMENTED OBJECT";
-          // setup test type and valid states
-          expTest = testType.OBJECT;
+          // setup valid states for test
+          ignoreAllUninstrs();
           stateList.add(stateType.OBJBEGIN);
           stateList.add(stateType.COOKSTACK);
           stateList.add(stateType.EXIT);
           break;
-        case "UNINSTR":
+        case "OBJ_SIMPLE":
+          expMessage = "SIMPLE INSTRUMENTED OBJECT";
+          // setup valid states for test
+          ignoreAllUninstrs();
+          stateList.add(stateType.OBJBEGIN);
+          stateList.add(stateType.COOKLOCAL);
+          stateList.add(stateType.EXIT);
+          break;
+        case "OBJ_CLINIT":
           expMessage = "UNINSTRUMENTED OBJECT";
-          // setup test type and valid states
-          expTest = testType.OBJECT;
-          // TODO:
+          // setup valid states for test
+          ignoreList.add(stateType.TRY);
+          ignoreList.add(stateType.SKIP);
+//          ignoreList.add(stateType.CALLBACK);
+          ignoreList.add(stateType.REPLACE);
+          ignoreList.add(stateType.RUN);
+
+          stateList.add(stateType.OBJBEGIN);
+//          stateList.add(stateType.CALLBACK);
+          stateList.add(stateType.COOKLOCAL);
+          stateList.add(stateType.EXIT);
           break;
         case "UNKNOWN":
           expMessage = "EXPECTED values not defined in test";
@@ -389,10 +434,9 @@ public class DanParse {
   public static void main(String[] args) {
     showMessages = 0;
     bFailure = false;
-    runState = stateType.NONE;
-    expTest = testType.NONE;
     stateIndex = 0;
     stateList = new ArrayList<>();
+    ignoreList = new ArrayList<>();
     String inputfilename = "";
     String outputfilename = "";
     

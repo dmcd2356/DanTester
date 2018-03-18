@@ -22,27 +22,28 @@ import java.io.File;
  */
 public class TestNewObject implements TestObject {
   
-  private enum TestType { OBJ_SIMPLE_INS, OBJ_SIMPLE_UN, UNINSTR, UNKNOWN };
+  private enum TestType { OBJ_UNINTRUMENTED, OBJ_SIMPLE, OBJ_CLINIT, UNKNOWN };
   
   @Override
   public int run(int testnum) {
     switch(testnum) {
       case 1:
-        // create simple instrumented object
-        expectedCondition(TestType.OBJ_SIMPLE_INS, "dantest.TestNewObject$NewObject1");
-        NewObject1 obj1 = new NewObject1(1);
+        // create simple uninstrumented object
+        expectedCondition(TestType.OBJ_UNINTRUMENTED, "java.util.ArrayList");
+        ArrayList<String> obj1 = new ArrayList<>();
         break;
       case 2:
-        // create simple uninstrumented object
-        expectedCondition(TestType.OBJ_SIMPLE_UN, "java.util.ArrayList");
-        ArrayList<String> obj2 = new ArrayList<>();
+        // create simple instrumented object
+        expectedCondition(TestType.OBJ_SIMPLE, "dantest.TestNewObject$NewObject2");
+        NewObject2 obj2 = new NewObject2(1);
         break;
       case 3:
-        // create uninstrumented object that creates instrumented object
-        expectedCondition(TestType.UNKNOWN, "dantest.TestNewObject$NewObject3");
-        ArrayList<NewObject3> obj3;
-        obj3 = new ArrayList<>();
-        obj3.add(new NewObject3(1));
+        // create instrumented object that has static init
+        expectedCondition(TestType.OBJ_CLINIT, "dantest.TestNewObject$NewObject3");
+        NewObject3 obj3 = new NewObject3(1);
+//        ArrayList<NewObject3> obj3;
+//        obj3 = new ArrayList<>();
+//        obj3.add(new NewObject3(1));
         break;
       case 4:
         // create instrumented object that creates another instrumented object
@@ -71,15 +72,17 @@ public class TestNewObject implements TestObject {
     System.out.println("EXPECTED: " + type.toString() + " " + objectType);
   }
   
-  private class NewObject1 {
+  private class NewObject2 {
     public int value;
-    NewObject1(int val) {
+    NewObject2(int val) {
       value = val;
     }
   }
   
-  private class NewObject3 {
-    public int value;
+  private static class NewObject3 {
+    public static int value = 0;
+    public static String[] array = { "hello", "world" };
+    
     NewObject3(int val) {
       value = val;
     }
