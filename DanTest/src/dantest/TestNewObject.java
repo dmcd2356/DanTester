@@ -22,14 +22,14 @@ import java.io.File;
  */
 public class TestNewObject implements TestObject {
   
-  private enum TestType { OBJ_UNINTRUMENTED, OBJ_SIMPLE, OBJ_CLINIT, UNKNOWN };
+  private enum TestType { OBJ_UNINSTRUMENTED, OBJ_SIMPLE, OBJ_CLINIT, UNKNOWN };
   
   @Override
   public int run(int testnum) {
     switch(testnum) {
       case 1:
         // create simple uninstrumented object
-        expectedCondition(TestType.OBJ_UNINTRUMENTED, "java.util.ArrayList");
+        expectedCondition(TestType.OBJ_UNINSTRUMENTED, "java.util.ArrayList");
         ArrayList<String> obj1 = new ArrayList<>();
         break;
       case 2:

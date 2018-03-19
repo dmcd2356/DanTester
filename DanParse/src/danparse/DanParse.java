@@ -413,7 +413,7 @@ public class DanParse {
           stateList.add(stateType.SKIP);
           stateList.add(stateType.EXIT);
           break;
-        case "OBJ_UNINTRUMENTED":
+        case "OBJ_UNINSTRUMENTED":
           expMessage = "SIMPLE UNINSTRUMENTED OBJECT";
           ignoreAllUninstrs(); // ignore all TEST: UNINSTR messages
           // setup valid states for test
