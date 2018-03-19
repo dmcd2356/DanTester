@@ -27,6 +27,8 @@ DanParse - a program for parsing the debug output of DanTest to determine if the
            -T  = display state and parsing info for debugging test
 
 -------------------------------------------------------------------------------------------------
+makeall.sh - bash script for building all pieces of the DanTester
+
 runtest.sh - bash script for running the tests
 
     Usage:
